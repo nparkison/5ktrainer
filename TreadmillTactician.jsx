@@ -5,27 +5,11 @@ import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken }
 import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 // --- Firebase Configuration & Initialization ---
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-const appId = "treadmill-tactician-v1";
-
-// Initialize Firebase only if config is present
-let app = null;
-let auth = null;
-let db = null;
-
-if (firebaseConfig.apiKey) {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-}
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 // --- Data Models & Constants ---
 
@@ -227,7 +211,7 @@ const ProgressBar = ({ current, total }) => {
   const percentage = Math.min(100, Math.max(0, (current / total) * 100));
   return (
     <div className="h-2 bg-slate-700 rounded-full w-full overflow-hidden">
-      <div
+      <div 
         className="h-full bg-blue-500 transition-all duration-1000 ease-linear"
         style={{ width: `${percentage}%` }}
       />
@@ -235,75 +219,42 @@ const ProgressBar = ({ current, total }) => {
   );
 };
 
-// --- Local Storage helpers (fallback when Firebase not configured) ---
-
-const LOCAL_STORAGE_KEYS = {
-  speeds: 'treadmill-tactician-speeds',
-  completedWorkouts: 'treadmill-tactician-completed',
-};
-
-const loadFromLocalStorage = (key, defaultValue) => {
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
-  } catch {
-    return defaultValue;
-  }
-};
-
-const saveToLocalStorage = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error('Error saving to localStorage', e);
-  }
-};
-
 // --- Main Application Component ---
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [userSpeeds, setUserSpeeds] = useState(DEFAULT_SPEEDS);
   const [completedWorkouts, setCompletedWorkouts] = useState([]);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [runState, setRunState] = useState('idle'); // idle, running, paused, finished
-
+  
   // Auth & Data Loading
   useEffect(() => {
-    // If Firebase is not configured, use local storage mode
-    if (!auth) {
-      setUser({ uid: 'local-user' });
-      setUserSpeeds(loadFromLocalStorage(LOCAL_STORAGE_KEYS.speeds, DEFAULT_SPEEDS));
-      setCompletedWorkouts(loadFromLocalStorage(LOCAL_STORAGE_KEYS.completedWorkouts, []));
-      setIsLoading(false);
-      return;
-    }
-
     const initAuth = async () => {
-      try {
+       if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        try {
+            await signInWithCustomToken(auth, __initial_auth_token);
+        } catch (e) {
+            console.error("Custom token failed, trying anon", e);
+            await signInAnonymously(auth);
+        }
+      } else {
         await signInAnonymously(auth);
-      } catch (e) {
-        console.error("Auth failed", e);
-        // Fallback to local mode
-        setUser({ uid: 'local-user' });
-        setIsLoading(false);
       }
     };
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      setIsLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  // Fetch Completed Workouts (Firebase mode)
+  // Fetch Completed Workouts
   useEffect(() => {
-    if (!user || !db) return;
-
+    if (!user) return;
+    
     // Fetch speeds if saved, else default
     const loadUserData = async () => {
         const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile');
@@ -332,12 +283,7 @@ export default function App() {
   // Save Settings
   const saveSpeeds = async (newSpeeds) => {
       setUserSpeeds(newSpeeds);
-
-      // Save to local storage always (as backup)
-      saveToLocalStorage(LOCAL_STORAGE_KEYS.speeds, newSpeeds);
-
-      // Save to Firebase if available
-      if(user && db) {
+      if(user) {
           try {
             await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile'), {
                 speeds: newSpeeds
@@ -349,38 +295,29 @@ export default function App() {
   };
 
   const markWorkoutComplete = async (workoutId) => {
-      // Update local state
-      const updated = [...completedWorkouts, workoutId];
-      setCompletedWorkouts(updated);
-
-      // Save to local storage always
-      saveToLocalStorage(LOCAL_STORAGE_KEYS.completedWorkouts, updated);
-
-      // Save to Firebase if available
-      if(user && db) {
-          try {
-              await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'workouts', `${workoutId}_${Date.now()}`), {
-                  workoutId,
-                  completedAt: serverTimestamp(),
-                  speedsUsed: userSpeeds
-              });
-          } catch (e) {
-              console.error("Error saving workout", e);
-          }
+      if(!user) return;
+      try {
+          await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'workouts', `${workoutId}_${Date.now()}`), {
+              workoutId,
+              completedAt: serverTimestamp(),
+              speedsUsed: userSpeeds
+          });
+      } catch (e) {
+          console.error("Error saving workout", e);
       }
   };
 
   // --- Render Logic ---
 
-  if (isLoading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Loading Trainer...</div>;
+  if (!user) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">Loading Trainer...</div>;
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-blue-500 selection:text-white pb-20 md:pb-0">
-
+      
       {/* Run Interface (Takes over screen if active) */}
       {selectedWorkout ? (
-        <ActiveWorkoutRunner
-            workout={selectedWorkout}
+        <ActiveWorkoutRunner 
+            workout={selectedWorkout} 
             userSpeeds={userSpeeds}
             onExit={() => {
                 setSelectedWorkout(null);
@@ -409,7 +346,7 @@ export default function App() {
             </header>
 
             <main className="flex-1 p-4 space-y-6">
-
+                
                 {activeTab === 'dashboard' && (
                     <>
                         {/* Weekly Progress Overview */}
@@ -441,8 +378,8 @@ export default function App() {
                                                                 <span>{workout.segments.length} SEGMENTS</span>
                                                             </div>
                                                         </div>
-                                                        <Button
-                                                            variant={isDone ? 'outline' : 'primary'}
+                                                        <Button 
+                                                            variant={isDone ? 'outline' : 'primary'} 
                                                             className="h-10 w-10 !p-0 rounded-full"
                                                             onClick={() => {
                                                                 setSelectedWorkout(workout);
@@ -484,7 +421,7 @@ const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState
     const [segmentIndex, setSegmentIndex] = useState(0);
     const [timeLeft, setTimeLeft] = useState(workout.segments[0].duration);
     const [totalTimeElapsed, setTotalTimeElapsed] = useState(0);
-
+    
     const currentSegment = workout.segments[segmentIndex];
     const nextSegment = workout.segments[segmentIndex + 1];
     const totalDuration = useMemo(() => workout.segments.reduce((acc, s) => acc + s.duration, 0), [workout]);
@@ -562,7 +499,7 @@ const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState
             <div className="flex-1 flex flex-col relative overflow-hidden">
                 {/* Background Progress Indicator */}
                 <div className="absolute inset-x-0 top-0 h-1 bg-slate-800 z-10">
-                    <div
+                    <div 
                         className="h-full bg-blue-500 transition-all duration-1000 ease-linear"
                         style={{ width: `${(totalTimeElapsed / totalDuration) * 100}%` }}
                     />
@@ -570,7 +507,7 @@ const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState
 
                 {/* Primary Display */}
                 <div className={`flex-1 flex flex-col items-center justify-center transition-colors duration-500 relative ${getSegmentColor(currentSegment.type)}`}>
-
+                    
                     {/* Background Texture/Pattern for visual interest */}
                     <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent" />
 
@@ -660,9 +597,9 @@ const SettingsPanel = ({ currentSpeeds, onSave }) => {
                                 <span className="text-xs text-slate-500">{item.desc}</span>
                             </div>
                             <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-700">
-                                <input
-                                    type="number"
-                                    step="0.1"
+                                <input 
+                                    type="number" 
+                                    step="0.1" 
                                     value={speeds[item.key]}
                                     onChange={(e) => handleChange(item.key, parseFloat(e.target.value))}
                                     className="bg-transparent w-16 text-right font-mono font-bold focus:outline-none"
@@ -672,7 +609,7 @@ const SettingsPanel = ({ currentSpeeds, onSave }) => {
                         </div>
                     ))}
                 </div>
-
+                
                 <div className="mt-8 pt-4 border-t border-slate-700">
                     <Button onClick={() => onSave(speeds)} className="w-full">
                         <Save size={18} /> Save Configuration
@@ -684,7 +621,7 @@ const SettingsPanel = ({ currentSpeeds, onSave }) => {
 };
 
 const NavButton = ({ icon: Icon, label, active, onClick }) => (
-    <button
+    <button 
         onClick={onClick}
         className={`flex flex-col items-center gap-1 p-2 min-w-[64px] rounded-lg transition-colors ${active ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
     >
