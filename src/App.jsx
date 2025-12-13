@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle, ChevronRight, Settings, BarChart, Calendar, ChevronLeft, Save } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Play, Pause, RotateCcw, CheckCircle, ChevronRight, Settings, Calendar, ChevronLeft, Save } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -195,6 +195,170 @@ const TRAINING_PLAN = [
         ]
       }
     ]
+  },
+  {
+    week: 4,
+    title: "Build Week",
+    workouts: [
+      {
+        id: 'w4d1',
+        name: "Tempo Intervals",
+        type: "Intervals",
+        description: "Longer work periods at threshold pace. Building endurance at speed.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 180, incline: 0, speed: 'jog' },
+          { type: 'interval', duration: 240, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 120, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 240, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 120, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 240, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 120, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 180, incline: 0, speed: 'run' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      },
+      {
+        id: 'w4d2',
+        name: "Hill Endurance",
+        type: "Hills",
+        description: "Extended hill work to build power and resilience.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 240, incline: 1, speed: 'jog' },
+          { type: 'hill', duration: 120, incline: 4, speed: 'jog' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'hill', duration: 120, incline: 5, speed: 'jog' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'hill', duration: 120, incline: 6, speed: 'jog' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'hill', duration: 90, incline: 7, speed: 'jog' },
+          { type: 'steady', duration: 240, incline: 0, speed: 'jog' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      },
+      {
+        id: 'w4d3',
+        name: "Long Steady",
+        type: "Endurance",
+        description: "35 minutes of continuous running. Building your aerobic engine.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 2100, incline: 1, speed: 'jog' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      }
+    ]
+  },
+  {
+    week: 5,
+    title: "Peak Week",
+    workouts: [
+      {
+        id: 'w5d1',
+        name: "Race Pace Repeats",
+        type: "Intervals",
+        description: "5k race pace intervals. This is the hardest interval session.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 240, incline: 0, speed: 'jog' },
+          { type: 'interval', duration: 300, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 300, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 300, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 240, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 180, incline: 0, speed: 'run' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      },
+      {
+        id: 'w5d2',
+        name: "Summit Assault",
+        type: "Hills",
+        description: "Peak hill session. Maximum strength and power development.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 300, incline: 2, speed: 'jog' },
+          { type: 'hill', duration: 180, incline: 5, speed: 'jog' },
+          { type: 'hill', duration: 180, incline: 6, speed: 'jog' },
+          { type: 'recovery', duration: 120, incline: 0, speed: 'walk' },
+          { type: 'hill', duration: 150, incline: 7, speed: 'jog' },
+          { type: 'hill', duration: 90, incline: 8, speed: 'walk' },
+          { type: 'recovery', duration: 120, incline: 0, speed: 'walk' },
+          { type: 'hill', duration: 120, incline: 6, speed: 'jog' },
+          { type: 'steady', duration: 300, incline: 0, speed: 'jog' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      },
+      {
+        id: 'w5d3',
+        name: "Peak Long Run",
+        type: "Endurance",
+        description: "40 minutes continuous. Your longest run of the plan.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 2400, incline: 1, speed: 'jog' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      }
+    ]
+  },
+  {
+    week: 6,
+    title: "Taper & Race Week",
+    workouts: [
+      {
+        id: 'w6d1',
+        name: "Sharpener",
+        type: "Intervals",
+        description: "Short, sharp efforts to maintain speed. Low volume, high quality.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 300, incline: 0, speed: 'jog' },
+          { type: 'interval', duration: 90, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 120, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 90, incline: 0, speed: 'run' },
+          { type: 'recovery', duration: 120, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 60, incline: 0, speed: 'sprint' },
+          { type: 'recovery', duration: 120, incline: 0, speed: 'walk' },
+          { type: 'interval', duration: 60, incline: 0, speed: 'sprint' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      },
+      {
+        id: 'w6d2',
+        name: "Easy Hills",
+        type: "Hills",
+        description: "Light hill work to keep legs responsive without fatigue.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 240, incline: 1, speed: 'jog' },
+          { type: 'hill', duration: 90, incline: 3, speed: 'jog' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'hill', duration: 90, incline: 4, speed: 'jog' },
+          { type: 'recovery', duration: 90, incline: 0, speed: 'walk' },
+          { type: 'hill', duration: 60, incline: 5, speed: 'jog' },
+          { type: 'steady', duration: 240, incline: 0, speed: 'jog' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      },
+      {
+        id: 'w6d3',
+        name: "Race Day Prep",
+        type: "Endurance",
+        description: "Short run at race pace. Final confidence builder before the 5k.",
+        segments: [
+          { type: 'warmup', duration: 300, incline: 0, speed: 'walk' },
+          { type: 'steady', duration: 600, incline: 0, speed: 'jog' },
+          { type: 'steady', duration: 600, incline: 1, speed: 'run' },
+          { type: 'steady', duration: 300, incline: 0, speed: 'jog' },
+          { type: 'cooldown', duration: 300, incline: 0, speed: 'walk' },
+        ]
+      }
+    ]
   }
 ];
 
@@ -222,18 +386,6 @@ const Card = ({ children, className = '' }) => (
     {children}
   </div>
 );
-
-const ProgressBar = ({ current, total }) => {
-  const percentage = Math.min(100, Math.max(0, (current / total) * 100));
-  return (
-    <div className="h-2 bg-slate-700 rounded-full w-full overflow-hidden">
-      <div
-        className="h-full bg-blue-500 transition-all duration-1000 ease-linear"
-        style={{ width: `${percentage}%` }}
-      />
-    </div>
-  );
-};
 
 // --- Local Storage helpers (fallback when Firebase not configured) ---
 
@@ -484,10 +636,102 @@ const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState
     const [segmentIndex, setSegmentIndex] = useState(0);
     const [timeLeft, setTimeLeft] = useState(workout.segments[0].duration);
     const [totalTimeElapsed, setTotalTimeElapsed] = useState(0);
+    const wakeLockRef = useRef(null);
 
     const currentSegment = workout.segments[segmentIndex];
     const nextSegment = workout.segments[segmentIndex + 1];
     const totalDuration = useMemo(() => workout.segments.reduce((acc, s) => acc + s.duration, 0), [workout]);
+
+    // Audio and Vibration Feedback Functions
+    const playBeep = () => {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Create a pleasant beep: two-tone chime
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // First tone (800Hz)
+            oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1); // Second tone (1000Hz)
+
+            // Volume envelope: fade in and fade out
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.15);
+            gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        } catch (error) {
+            console.log('Audio playback not supported:', error);
+        }
+    };
+
+    const triggerVibration = () => {
+        try {
+            if (navigator.vibrate) {
+                navigator.vibrate(200); // 200ms vibration
+            }
+        } catch (error) {
+            console.log('Vibration not supported:', error);
+        }
+    };
+
+    // Screen Wake Lock Management
+    useEffect(() => {
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator && runState === 'running') {
+                    wakeLockRef.current = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock activated');
+                }
+            } catch (err) {
+                console.log('Wake Lock error:', err);
+            }
+        };
+
+        const releaseWakeLock = async () => {
+            if (wakeLockRef.current) {
+                try {
+                    await wakeLockRef.current.release();
+                    wakeLockRef.current = null;
+                    console.log('Wake Lock released');
+                } catch (err) {
+                    console.log('Wake Lock release error:', err);
+                }
+            }
+        };
+
+        if (runState === 'running') {
+            requestWakeLock();
+        } else {
+            releaseWakeLock();
+        }
+
+        // Cleanup on unmount
+        return () => {
+            releaseWakeLock();
+        };
+    }, [runState]);
+
+    // Navigation handlers
+    const skipToNextSegment = () => {
+        if (segmentIndex < workout.segments.length - 1) {
+            const nextIndex = segmentIndex + 1;
+            setSegmentIndex(nextIndex);
+            setTimeLeft(workout.segments[nextIndex].duration);
+        }
+    };
+
+    const goToPreviousSegment = () => {
+        if (segmentIndex > 0) {
+            const prevIndex = segmentIndex - 1;
+            setSegmentIndex(prevIndex);
+            setTimeLeft(workout.segments[prevIndex].duration);
+        }
+    };
 
     // Timer Logic
     useEffect(() => {
@@ -502,14 +746,16 @@ const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState
             if (segmentIndex < workout.segments.length - 1) {
                 setSegmentIndex(prev => prev + 1);
                 setTimeLeft(workout.segments[segmentIndex + 1].duration);
-                // Optional: Play beep sound here
+                // Play audio cue and trigger vibration on segment change
+                playBeep();
+                triggerVibration();
             } else {
                 setRunState('finished');
                 onComplete();
             }
         }
         return () => clearInterval(interval);
-    }, [runState, timeLeft, segmentIndex, workout.segments]);
+    }, [runState, timeLeft, segmentIndex, workout.segments, playBeep, triggerVibration, setRunState, onComplete]);
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -604,24 +850,82 @@ const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState
                 </div>
 
                 {/* Next Segment Preview (Toast style) */}
-                {nextSegment && (
+                {nextSegment && runState !== 'idle' && (
                     <div className="absolute bottom-[35%] left-4 right-4 bg-black/60 backdrop-blur-md rounded-lg p-3 border border-white/10 flex justify-between items-center text-sm z-20">
                         <span className="text-slate-300">Up Next: <span className="text-white font-bold uppercase">{nextSegment.type}</span></span>
                         <span className="font-mono text-slate-400">{formatTime(nextSegment.duration)}</span>
                     </div>
                 )}
+
+                {/* Workout Preview - Show when idle */}
+                {runState === 'idle' && (
+                    <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-sm z-30 flex flex-col">
+                        <div className="p-4 border-b border-slate-800">
+                            <h3 className="font-bold text-lg mb-1">{workout.name}</h3>
+                            <p className="text-sm text-slate-400">{workout.description}</p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                            {workout.segments.map((segment, idx) => (
+                                <div key={idx} className={`flex items-center gap-3 p-3 rounded-lg border ${getSegmentColor(segment.type)} bg-opacity-20 border-opacity-30`}>
+                                    <div className={`w-2 h-2 rounded-full ${getSegmentColor(segment.type)}`} />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-sm uppercase">{segment.type}</div>
+                                        <div className="text-xs text-slate-400 font-mono">
+                                            {formatTime(segment.duration)} • {getSpeedValue(segment.speed)} mph • {segment.incline}% incline
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-slate-500 font-mono">#{idx + 1}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="p-4 border-t border-slate-800 bg-slate-900">
+                            <div className="text-center text-sm text-slate-400 mb-4">
+                                <span className="font-mono">{workout.segments.length} segments</span>
+                                <span className="mx-2">•</span>
+                                <span className="font-mono">{Math.round(totalDuration / 60)} minutes total</span>
+                            </div>
+                            <Button onClick={() => setRunState('running')} variant="success" className="w-full h-16 text-xl">
+                                <Play fill="currentColor" /> START WORKOUT
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Controls */}
-            <div className="p-6 bg-slate-900 border-t border-slate-800 flex justify-center gap-6">
-                {runState === 'running' ? (
-                    <Button onClick={() => setRunState('paused')} variant="secondary" className="w-full max-w-xs h-16 text-xl">
-                        <Pause fill="currentColor" /> PAUSE
-                    </Button>
-                ) : (
-                    <Button onClick={() => setRunState('running')} variant="success" className="w-full max-w-xs h-16 text-xl">
-                        <Play fill="currentColor" /> {runState === 'idle' ? 'START WORKOUT' : 'RESUME'}
-                    </Button>
+            <div className="p-6 bg-slate-900 border-t border-slate-800 flex justify-center gap-4">
+                {runState === 'idle' ? null : (
+                    <>
+                        <Button
+                            onClick={goToPreviousSegment}
+                            variant="outline"
+                            className="h-16 w-16 !p-0 rounded-full"
+                            disabled={segmentIndex === 0}
+                        >
+                            <ChevronLeft size={24} />
+                        </Button>
+
+                        {runState === 'running' ? (
+                            <Button onClick={() => setRunState('paused')} variant="secondary" className="flex-1 max-w-xs h-16 text-xl">
+                                <Pause fill="currentColor" /> PAUSE
+                            </Button>
+                        ) : (
+                            <Button onClick={() => setRunState('running')} variant="success" className="flex-1 max-w-xs h-16 text-xl">
+                                <Play fill="currentColor" /> RESUME
+                            </Button>
+                        )}
+
+                        <Button
+                            onClick={skipToNextSegment}
+                            variant="outline"
+                            className="h-16 w-16 !p-0 rounded-full"
+                            disabled={segmentIndex === workout.segments.length - 1}
+                        >
+                            <ChevronRight size={24} />
+                        </Button>
+                    </>
                 )}
             </div>
         </div>
