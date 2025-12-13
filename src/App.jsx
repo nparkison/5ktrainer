@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle, ChevronRight, Settings, Calendar, ChevronLeft, Save } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle, ChevronRight, Settings, Calendar, ChevronLeft, Save, Activity, SkipForward, Flame } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -36,6 +36,71 @@ const DEFAULT_SPEEDS = {
   run: 7.0,
   sprint: 9.0,
 };
+
+// Default user preferences
+const DEFAULT_PREFERENCES = {
+  enableWarmup: true,
+};
+
+// Dynamic Warm-Up Exercises
+const WARMUP_EXERCISES = [
+  {
+    id: 'leg-swings-fb',
+    name: 'Leg Swings (Front/Back)',
+    duration: 30,
+    description: 'Hold onto treadmill rails. Swing one leg forward and back in a controlled motion.',
+    reps: '10 each leg',
+    icon: 'activity'
+  },
+  {
+    id: 'leg-swings-side',
+    name: 'Leg Swings (Side to Side)',
+    duration: 30,
+    description: 'Hold onto treadmill rails. Swing one leg side to side across your body.',
+    reps: '10 each leg',
+    icon: 'activity'
+  },
+  {
+    id: 'walking-lunges',
+    name: 'Walking Lunges',
+    duration: 30,
+    description: 'Step forward into a lunge. Keep knee over ankle. Alternate legs.',
+    reps: '8-10 total',
+    icon: 'activity'
+  },
+  {
+    id: 'high-knees',
+    name: 'High Knees',
+    duration: 20,
+    description: 'Jog in place bringing knees up to hip height. Quick tempo.',
+    reps: '20 seconds',
+    icon: 'flame'
+  },
+  {
+    id: 'butt-kicks',
+    name: 'Butt Kicks',
+    duration: 20,
+    description: 'Jog in place kicking heels up toward glutes. Light and quick.',
+    reps: '20 seconds',
+    icon: 'flame'
+  },
+  {
+    id: 'arm-circles',
+    name: 'Arm Circles',
+    duration: 20,
+    description: 'Extend arms out. Make small circles, gradually increasing size.',
+    reps: '10 forward, 10 back',
+    icon: 'activity'
+  },
+  {
+    id: 'ankle-circles',
+    name: 'Ankle Circles',
+    duration: 20,
+    description: 'Lift one foot off ground. Rotate ankle in circles both directions.',
+    reps: '5 each direction, each ankle',
+    icon: 'activity'
+  }
+];
 
 // The 6-Week "Athlete" 5k Plan
 // Phases: 'warmup', 'steady', 'interval', 'hill', 'recovery', 'cooldown'
@@ -392,6 +457,7 @@ const Card = ({ children, className = '' }) => (
 const LOCAL_STORAGE_KEYS = {
   speeds: 'treadmill-tactician-speeds',
   completedWorkouts: 'treadmill-tactician-completed',
+  preferences: 'treadmill-tactician-preferences',
 };
 
 const loadFromLocalStorage = (key, defaultValue) => {
@@ -418,9 +484,10 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [userSpeeds, setUserSpeeds] = useState(DEFAULT_SPEEDS);
+  const [userPreferences, setUserPreferences] = useState(DEFAULT_PREFERENCES);
   const [completedWorkouts, setCompletedWorkouts] = useState([]);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
-  const [runState, setRunState] = useState('idle'); // idle, running, paused, finished
+  const [runState, setRunState] = useState('idle'); // idle, warmup, running, paused, finished
 
   // Auth & Data Loading
   useEffect(() => {
@@ -428,6 +495,7 @@ export default function App() {
     if (!auth) {
       setUser({ uid: 'local-user' });
       setUserSpeeds(loadFromLocalStorage(LOCAL_STORAGE_KEYS.speeds, DEFAULT_SPEEDS));
+      setUserPreferences(loadFromLocalStorage(LOCAL_STORAGE_KEYS.preferences, DEFAULT_PREFERENCES));
       setCompletedWorkouts(loadFromLocalStorage(LOCAL_STORAGE_KEYS.completedWorkouts, []));
       setIsLoading(false);
       return;
@@ -456,12 +524,18 @@ export default function App() {
   useEffect(() => {
     if (!user || !db) return;
 
-    // Fetch speeds if saved, else default
+    // Fetch speeds and preferences if saved, else default
     const loadUserData = async () => {
         const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile');
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().speeds) {
-            setUserSpeeds(docSnap.data().speeds);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.speeds) {
+                setUserSpeeds(data.speeds);
+            }
+            if (data.preferences) {
+                setUserPreferences(data.preferences);
+            }
         }
     }
     loadUserData();
@@ -496,6 +570,24 @@ export default function App() {
             }, { merge: true });
           } catch (e) {
               console.error("Error saving settings", e);
+          }
+      }
+  };
+
+  const savePreferences = async (newPreferences) => {
+      setUserPreferences(newPreferences);
+
+      // Save to local storage always (as backup)
+      saveToLocalStorage(LOCAL_STORAGE_KEYS.preferences, newPreferences);
+
+      // Save to Firebase if available
+      if(user && db) {
+          try {
+            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'profile'), {
+                preferences: newPreferences
+            }, { merge: true });
+          } catch (e) {
+              console.error("Error saving preferences", e);
           }
       }
   };
@@ -598,7 +690,7 @@ export default function App() {
                                                             className="h-10 w-10 !p-0 rounded-full"
                                                             onClick={() => {
                                                                 setSelectedWorkout(workout);
-                                                                setRunState('idle');
+                                                                setRunState(userPreferences.enableWarmup ? 'warmup' : 'idle');
                                                             }}
                                                         >
                                                             {isDone ? <RotateCcw size={18} /> : <Play size={18} fill="currentColor" />}
@@ -615,7 +707,12 @@ export default function App() {
                 )}
 
                 {activeTab === 'settings' && (
-                    <SettingsPanel currentSpeeds={userSpeeds} onSave={saveSpeeds} />
+                    <SettingsPanel
+                        currentSpeeds={userSpeeds}
+                        currentPreferences={userPreferences}
+                        onSaveSpeeds={saveSpeeds}
+                        onSavePreferences={savePreferences}
+                    />
                 )}
             </main>
 
@@ -630,6 +727,166 @@ export default function App() {
   );
 }
 
+// --- Warm-Up Guide Component ---
+
+const WarmUpGuide = ({ onComplete, onSkip }) => {
+    const [currentExercise, setCurrentExercise] = useState(0);
+    const [timeLeft, setTimeLeft] = useState(WARMUP_EXERCISES[0].duration);
+    const [isActive, setIsActive] = useState(false);
+    const [showIntro, setShowIntro] = useState(true);
+
+    const exercise = WARMUP_EXERCISES[currentExercise];
+    const progress = ((currentExercise + (1 - timeLeft / exercise.duration)) / WARMUP_EXERCISES.length) * 100;
+
+    // Timer Logic
+    useEffect(() => {
+        let interval;
+        if (isActive && timeLeft > 0) {
+            interval = setInterval(() => {
+                setTimeLeft((prev) => prev - 1);
+            }, 1000);
+        } else if (timeLeft === 0 && currentExercise < WARMUP_EXERCISES.length - 1) {
+            // Move to next exercise
+            const nextIndex = currentExercise + 1;
+            setCurrentExercise(nextIndex);
+            setTimeLeft(WARMUP_EXERCISES[nextIndex].duration);
+        } else if (timeLeft === 0 && currentExercise === WARMUP_EXERCISES.length - 1) {
+            // Warmup complete
+            onComplete();
+        }
+        return () => clearInterval(interval);
+    }, [isActive, timeLeft, currentExercise, onComplete]);
+
+    const skipExercise = () => {
+        if (currentExercise < WARMUP_EXERCISES.length - 1) {
+            const nextIndex = currentExercise + 1;
+            setCurrentExercise(nextIndex);
+            setTimeLeft(WARMUP_EXERCISES[nextIndex].duration);
+        } else {
+            onComplete();
+        }
+    };
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    if (showIntro) {
+        return (
+            <div className="h-screen flex flex-col bg-gradient-to-br from-orange-900 to-slate-900">
+                <div className="p-4 flex justify-between items-center border-b border-orange-800/50">
+                    <button onClick={onSkip} className="text-slate-400 hover:text-white flex items-center gap-1 text-sm font-bold uppercase tracking-wider">
+                        <ChevronLeft size={16} /> Back
+                    </button>
+                    <span className="text-xs font-mono text-slate-500">PRE-WORKOUT</span>
+                </div>
+
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
+                    <div className="w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-orange-900/50">
+                        <Flame size={40} className="text-white" />
+                    </div>
+                    <h2 className="text-3xl font-bold">Dynamic Warm-Up</h2>
+                    <p className="text-slate-300 max-w-md">
+                        Prepare your body for the workout ahead with {WARMUP_EXERCISES.length} dynamic stretches and movements.
+                        This will reduce injury risk and improve performance.
+                    </p>
+                    <div className="bg-slate-950/50 rounded-lg p-4 max-w-md">
+                        <div className="text-sm text-slate-400 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span>Duration:</span>
+                                <span className="font-mono text-white">~{Math.ceil(WARMUP_EXERCISES.reduce((acc, ex) => acc + ex.duration, 0) / 60)} minutes</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span>Exercises:</span>
+                                <span className="font-mono text-white">{WARMUP_EXERCISES.length} movements</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 space-y-3 border-t border-orange-800/50">
+                    <Button onClick={() => { setShowIntro(false); setIsActive(true); }} variant="primary" className="w-full h-16 text-xl bg-orange-600 hover:bg-orange-700">
+                        <Flame /> Start Warm-Up
+                    </Button>
+                    <Button onClick={onSkip} variant="outline" className="w-full">
+                        <SkipForward size={18} /> Skip (Already Warmed Up)
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="h-screen flex flex-col bg-gradient-to-br from-orange-900 to-slate-900">
+            {/* Progress Bar */}
+            <div className="h-2 bg-slate-950">
+                <div
+                    className="h-full bg-orange-500 transition-all duration-300 ease-linear"
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+
+            {/* Header */}
+            <div className="p-4 flex justify-between items-center border-b border-orange-800/50">
+                <span className="text-xs font-mono text-slate-400">
+                    EXERCISE {currentExercise + 1}/{WARMUP_EXERCISES.length}
+                </span>
+                <button onClick={skipExercise} className="text-orange-400 hover:text-orange-300 text-sm font-bold flex items-center gap-1">
+                    Skip <ChevronRight size={14} />
+                </button>
+            </div>
+
+            {/* Main Exercise Display */}
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
+                <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mb-2 border-2 border-orange-500">
+                    <Activity size={32} className="text-orange-400" />
+                </div>
+
+                <div className="space-y-3">
+                    <h2 className="text-3xl font-bold text-white">{exercise.name}</h2>
+                    <p className="text-slate-300 max-w-md text-lg">{exercise.description}</p>
+                    <div className="inline-block bg-orange-500/20 px-4 py-2 rounded-lg border border-orange-500/30">
+                        <span className="text-orange-300 font-mono text-sm">{exercise.reps}</span>
+                    </div>
+                </div>
+
+                {/* Timer Display */}
+                <div className="text-8xl font-black tabular-nums text-orange-400 drop-shadow-xl my-8">
+                    {formatTime(timeLeft)}
+                </div>
+
+                {/* Next Exercise Preview */}
+                {currentExercise < WARMUP_EXERCISES.length - 1 && (
+                    <div className="bg-slate-950/50 backdrop-blur-sm rounded-lg p-4 border border-slate-700/50 max-w-md w-full">
+                        <div className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Up Next</div>
+                        <div className="text-sm text-white font-bold">{WARMUP_EXERCISES[currentExercise + 1].name}</div>
+                    </div>
+                )}
+            </div>
+
+            {/* Controls */}
+            <div className="p-6 border-t border-orange-800/50">
+                <div className="flex gap-4 justify-center">
+                    {isActive ? (
+                        <Button onClick={() => setIsActive(false)} variant="secondary" className="flex-1 max-w-xs h-14">
+                            <Pause /> Pause
+                        </Button>
+                    ) : (
+                        <Button onClick={() => setIsActive(true)} variant="primary" className="flex-1 max-w-xs h-14 bg-orange-600 hover:bg-orange-700">
+                            <Play /> {timeLeft < exercise.duration ? 'Resume' : 'Start'}
+                        </Button>
+                    )}
+                    <Button onClick={onSkip} variant="outline" className="h-14 px-6">
+                        Skip All
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- Active Workout Component (The "Cockpit") ---
 
 const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState, setRunState }) => {
@@ -641,6 +898,16 @@ const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState
     const currentSegment = workout.segments[segmentIndex];
     const nextSegment = workout.segments[segmentIndex + 1];
     const totalDuration = useMemo(() => workout.segments.reduce((acc, s) => acc + s.duration, 0), [workout]);
+
+    // Show warm-up guide if in warmup state
+    if (runState === 'warmup') {
+        return (
+            <WarmUpGuide
+                onComplete={() => setRunState('idle')}
+                onSkip={() => setRunState('idle')}
+            />
+        );
+    }
 
     // Audio and Vibration Feedback Functions
     const playBeep = () => {
@@ -934,11 +1201,21 @@ const ActiveWorkoutRunner = ({ workout, userSpeeds, onExit, onComplete, runState
 
 // --- Settings Panel ---
 
-const SettingsPanel = ({ currentSpeeds, onSave }) => {
+const SettingsPanel = ({ currentSpeeds, currentPreferences, onSaveSpeeds, onSavePreferences }) => {
     const [speeds, setSpeeds] = useState(currentSpeeds);
+    const [preferences, setPreferences] = useState(currentPreferences);
 
-    const handleChange = (key, val) => {
+    const handleSpeedChange = (key, val) => {
         setSpeeds(prev => ({ ...prev, [key]: val }));
+    };
+
+    const handlePreferenceChange = (key, val) => {
+        setPreferences(prev => ({ ...prev, [key]: val }));
+    };
+
+    const handleSaveAll = () => {
+        onSaveSpeeds(speeds);
+        onSavePreferences(preferences);
     };
 
     return (
@@ -968,7 +1245,7 @@ const SettingsPanel = ({ currentSpeeds, onSave }) => {
                                     type="number"
                                     step="0.1"
                                     value={speeds[item.key]}
-                                    onChange={(e) => handleChange(item.key, parseFloat(e.target.value))}
+                                    onChange={(e) => handleSpeedChange(item.key, parseFloat(e.target.value))}
                                     className="bg-transparent w-16 text-right font-mono font-bold focus:outline-none"
                                 />
                                 <span className="text-xs text-slate-500 font-mono">MPH</span>
@@ -976,13 +1253,43 @@ const SettingsPanel = ({ currentSpeeds, onSave }) => {
                         </div>
                     ))}
                 </div>
+            </Card>
 
-                <div className="mt-8 pt-4 border-t border-slate-700">
-                    <Button onClick={() => onSave(speeds)} className="w-full">
-                        <Save size={18} /> Save Configuration
-                    </Button>
+            <Card>
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                    <Activity size={20} /> Workout Preferences
+                </h3>
+                <p className="text-sm text-slate-400 mb-6">
+                    Customize your workout experience.
+                </p>
+
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                            <label className="block text-sm font-bold text-slate-200">Dynamic Warm-Up Guide</label>
+                            <span className="text-xs text-slate-500">Show guided warm-up exercises before workouts</span>
+                        </div>
+                        <button
+                            onClick={() => handlePreferenceChange('enableWarmup', !preferences.enableWarmup)}
+                            className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                                preferences.enableWarmup ? 'bg-orange-600' : 'bg-slate-700'
+                            }`}
+                        >
+                            <span
+                                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                                    preferences.enableWarmup ? 'translate-x-7' : 'translate-x-1'
+                                }`}
+                            />
+                        </button>
+                    </div>
                 </div>
             </Card>
+
+            <div className="pb-4">
+                <Button onClick={handleSaveAll} className="w-full">
+                    <Save size={18} /> Save All Settings
+                </Button>
+            </div>
         </div>
     );
 };
