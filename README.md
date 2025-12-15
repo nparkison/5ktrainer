@@ -80,6 +80,17 @@ VITE_FIREBASE_APP_ID=your_app_id
 
 On mobile devices, use your browser's "Add to Home Screen" option to install the app for a native-like experience.
 
+## Deployment & API
+
+### Quick Start
+See [QUICKSTART.md](QUICKSTART.md) for step-by-step deployment instructions.
+
+### Full Deployment Guide
+See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive hosting and storage setup.
+
+### API Documentation
+See [API.md](API.md) for REST API endpoints to access your workout data.
+
 ## License
 
 MIT

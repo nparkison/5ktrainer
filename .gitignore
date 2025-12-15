@@ -26,3 +26,22 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Firebase
+.firebase/
+.firebaserc
+firebase-debug.log
+
+# Scripts
+scripts/serviceAccountKey.json
+scripts/*.json
+!scripts/package.json
+
+# Data exports
+*.json
+!package.json
+!package-lock.json
+!manifest.json
+!firebase.json
+!vercel.json
+!tsconfig.json

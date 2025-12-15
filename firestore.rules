@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Treadmill Tactician app data
+    match /artifacts/treadmill-tactician-v1/users/{userId}/{document=**} {
+      // Users can only read/write their own data
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
